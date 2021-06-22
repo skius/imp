@@ -39,34 +39,11 @@ The core IMP syntax is precisely the same as introduced in the lecture (incl. sh
 The syntax to verify axiomatic derivations is the same as the introduced "Proof Outline", except that there
 are no semi-colons.
 
-Example (`square.imp`, squares `a` and stores it in `b` using only addition):
-```
-{a >= 0}
-⊨
-{a >= 0 and 0 = 0 and 0 = 0}
-b := 0
-{a >= 0 and b = 0 and 0 = 0}
-i := 0
-{a >= 0 and b = 0 and i = 0}
-⊨
-{i <= a and b = a * i}
-while (i # a) do
-    {i # a and (i <= a and b = a * i)}
-    ⊨
-    {i # a and (i <= a and b + a = a * (i + 1))}
-    b := b + a
-    {i # a and (i <= a and b = a * (i + 1))}
-    ⊨
-    {i + 1 <= a and b = a * (i + 1)}
-    i := i + 1
-    {i <= a and b = a * i}
-end
-{not (i # a) and (i <= a and b = a * i)}
-⊨
-{b = a * a}
-```
+Files that use the proof outline syntax (e.g. [examples/swap.imp](./examples/swap.imp)) may be used by all semantics, 
+but files that only use the core IMP syntax (e.g. [examples/abs.imp](./examples/abs.imp)) may only be used by the
+big-step and small-step semantics.
 
-Note that you may use `⊨` or `|=` for rules of consequence.  
+**Note for proof outline syntax:** You may use `⊨` or `|=` for rules of consequence.  
 Additionally, one must be very careful
 writing the conditions for `if` and `while` - their conditions must be ANDed at the highest level: 
 ```
