@@ -29,7 +29,7 @@ $ cargo build
 ## Usage
 
 ```
-./imp <filename> <true/false: run big-step> <true/false: run small-step> <true/false: run axiomatic>
+./imp <filename> <true/false: run big-step> <true/false: run small-step> <total/partial/false: run axiomatic>
 ```
 For example, `./imp examples/square.imp true true partial` evaluates `examples/square.imp` with both big-step and
 small-step semantics and verifies the given derivations for partial correctness, and `./imp examples/divide.imp 
