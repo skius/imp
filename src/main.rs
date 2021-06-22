@@ -36,22 +36,34 @@ fn main() {
 
     if run_big == "true" {
         // Allow both pure IMP syntax and pre/post-condition syntax
-        let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::StmAxParser::new().parse(contents.as_str()).unwrap().into_stm());
+        let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
         println!("\nRunning Big-Step evaluator...");
         println!("Big-Step result: {:?}", big_step::run(Configuration::Nonterminal(prog, State::new())));
     }
     if run_small == "true" {
         // Allow both pure IMP syntax and pre/post-condition syntax
-        let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::StmAxParser::new().parse(contents.as_str()).unwrap().into_stm());
+        let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
         println!("\nRunning Small-Step evaluator...");
         let mut sos = small_step::SOS::new(Configuration::Nonterminal(prog.clone(), State::new()));
         sos.run_execution();
     }
+    // if run_axiomatic == "true" {
+    //     // Force syntax with pre/post-conditions
+    //     let prog = imp::StmAxParser::new().parse(contents.as_str()).unwrap();
+    //     println!("\nVerifying Axiomatic Semantics for program...");
+    //     axiomatic::verify_rules_except_cons(prog.clone());
+    //     axiomatic::verify_cons(prog);
+    // }
+
     if run_axiomatic == "true" {
         // Force syntax with pre/post-conditions
-        let prog = imp::StmAxParser::new().parse(contents.as_str()).unwrap();
+        let prog = imp::AxBlockParser::new().parse(contents.as_str()).unwrap();
         println!("\nVerifying Axiomatic Semantics for program...");
-        axiomatic::verify_rules_except_cons(prog.clone());
-        axiomatic::verify_cons(prog);
+        println!("{:?}\n", prog);
+
+        let cfg = z3::Config::new();
+        axiomatic::verify_block_except_cons(prog.clone());
+        axiomatic::verify_cons(&cfg, prog);
+        println!("Successfully verified program.");
     }
 }

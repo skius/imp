@@ -1,3 +1,9 @@
-{x = X and y = Y} z := x {z = X and y = Y};
-{y = Y and z = X} x := y {x = Y and z = X};
-{x = Y and z = X} y := z {x = Y and y = X}
+{x = X and y = Y}
+z := x
+{z = X and y = Y}
+|=
+{y = Y and z = X}
+x := y
+{x = Y and z = X}
+y := z
+{x = Y and y = X}

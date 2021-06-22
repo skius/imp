@@ -4,6 +4,112 @@ use z3::ast::Ast;
 
 pub type Var = String;
 
+#[derive(Clone, Debug)]
+pub struct AssertionChain(pub Vec<Bexp>);
+
+impl AssertionChain {
+    pub fn new(first: Box<Bexp>, rem: Vec<Box<Bexp>>) -> AssertionChain {
+        let mut rem: Vec<Bexp> = rem.into_iter().map(|bexp_box| *bexp_box ).collect();
+        rem.insert(0, *first);
+        AssertionChain(rem)
+    }
+
+    pub fn indent_string(&self, prefix: String) -> String {
+        let mut result = format!("{}{{ {:?} }}", prefix.clone(), self.0.first().unwrap());
+
+        for assertion in self.0.iter().skip(1) {
+            result += &format!("\n{}⊨\n{}{{ {:?} }}", prefix.clone(), prefix.clone(), assertion)
+        }
+
+        result
+    }
+}
+
+#[derive(Clone)]
+pub struct AxBlock(pub AssertionChain, pub Vec<(AxStm, AssertionChain)>);
+
+impl AxBlock {
+    pub fn indent_string(&self, prefix: String) -> String {
+        let first = &self.0;
+        let rem = &self.1;
+
+        let mut res = format!("{}", first.indent_string(prefix.clone()));
+
+        for (stm, chain) in rem.iter() {
+            res += &format!("\n{}", stm.indent_string(prefix.clone()));
+            res += &format!("\n{}", chain.indent_string(prefix.clone()));
+        }
+
+        res
+
+    }
+
+    pub fn into_stm(self) -> Box<Stm> {
+        let AxBlock(_, rem) = self;
+        let mut rem = rem.into_iter();
+        let mut pre_stm = rem.next().unwrap().0.into_stm();
+
+        for (curr_stm, _) in rem {
+            pre_stm = Box::new(Stm::Seq(pre_stm, curr_stm.into_stm()))
+        }
+
+        pre_stm
+    }
+}
+
+impl Debug for AxBlock {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.indent_string("".to_owned()))
+    }
+}
+
+
+#[derive(Clone, Debug)]
+pub enum AxStm {
+    Assign(Var, Aexp),
+    Skip,
+    If(Bexp, AxBlock, AxBlock),
+    While(Bexp, AxBlock),
+}
+
+impl AxStm {
+    pub fn into_stm(self) -> Box<Stm> {
+        Box::new(match self {
+            AxStm::Skip => Stm::Skip,
+            AxStm::Assign(v, e) => Stm::Assign(v, Box::new(e)),
+            AxStm::If(cond, then_block, else_block) => {
+                let then_stm = then_block.into_stm();
+                let else_stm = else_block.into_stm();
+                Stm::If(Box::new(cond), then_stm, else_stm)
+            },
+            AxStm::While(cond, inner_block) => {
+                let inner_stm = inner_block.into_stm();
+                Stm::While(Box::new(cond), inner_stm)
+            }
+        })
+    }
+
+    pub fn indent_string(&self, prefix: String) -> String {
+        match self {
+            AxStm::Skip => prefix + "skip",
+            AxStm::Assign(v, aexp) => prefix + &format!("{} := {:?}", v, aexp),
+            AxStm::If(cond, then_block, else_block) => {
+                let then_string = then_block.indent_string(prefix.clone() + "    ");
+                let else_string = else_block.indent_string(prefix.clone() + "    ");
+
+                format!("{}if {:?} then\n{}\nelse{}\nend", prefix, cond, then_string, else_string)
+            },
+            AxStm::While(cond, inner_block) => {
+                let inner_string = inner_block.indent_string(prefix.clone() + "    ");
+
+                format!("{}while {:?} do\n{}\nend", prefix, cond, inner_string)
+            },
+        }
+    }
+}
+
+
+
 #[derive(Clone)]
 pub enum StmAx {
     Assign(Box<Bexp>, Var, Box<Aexp>, Box<Bexp>),

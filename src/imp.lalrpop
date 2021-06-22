@@ -1,7 +1,28 @@
 use std::str::FromStr;
 use crate::ast::{Aexp, Opcode, Bexp, Ropcode, Bopcode, Stm, StmAx};
+use crate::ast::*;
 
 grammar;
+
+pub AssertionChain: AssertionChain = {
+    "{" <first:Bexp> "}" <rem:(Entailment "{" <Bexp> "}")*> => AssertionChain::new(first, rem)
+}
+
+Entailment: () = {
+    "⊨" => (),
+    "|=" => (),
+}
+
+pub AxBlock: AxBlock = {
+    <AssertionChain> <(AxStm AssertionChain)+> => AxBlock(<>)
+}
+
+AxStm: AxStm = {
+    <v:Var> ":=" <aexp:Aexp> => AxStm::Assign(v, *aexp),
+    "skip" => AxStm::Skip,
+    "if" <b:Bexp> "then" <then_stm:AxBlock> "else" <else_stm:AxBlock> "end" => AxStm::If(*b, then_stm, else_stm),
+    "while" <b:Bexp> "do" <stm_inner:AxBlock> "end" => AxStm::While(*b, stm_inner),
+}
 
 pub Stm: Box<Stm> = {
     <Stm> ";" <Stm1> => Box::new(Stm::Seq(<>)),

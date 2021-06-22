@@ -20,7 +20,7 @@ impl SOS {
         }
         // The iterator never stops unless its a Terminal state, hence the next iterator
         // Option<Configuration> should be Some(Terminal)
-        print!("{:?}", it.next().unwrap())
+        println!("{:?}", it.next().unwrap())
 
     }
 }

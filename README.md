@@ -36,18 +36,18 @@ small-step semantics and verifies the given derivations.
 
 ### IMP Syntax
 The core IMP syntax is precisely the same as introduced in the lecture (incl. shorthands). 
-The syntax for pre-/post-conditions is a bit cumbersome, however; every 'base' statement must
-have a pre- and post-condition, rules of consequence are implicit at sequence statements.
+The syntax to verify axiomatic derivations is the same as the introduced "Proof Outline", except that there
+are no semi-colons.
 
 Example (`square.imp`, squares `a` and stores it in `b` using only addition):
 ```
-# an "ergonomic" proof outline as in the course:
+# proof outline as in the course:
 {a >= 0}
 ⊨
-{a >= 0 and 0 = 0 and 0 = 0} 
-b := 0;
+{a >= 0 and 0 = 0 and 0 = 0}
+b := 0
 {a >= 0 and b = 0 and 0 = 0}
-i := 0;
+i := 0
 {a >= 0 and b = 0 and i = 0}
 ⊨
 {i <= a and b = a * i}
@@ -55,41 +55,20 @@ while (i # a) do
     {i # a and (i <= a and b = a * i)}
     ⊨
     {i # a and (i <= a and b + a = a * (i + 1))}
-    b := b + a;
+    b := b + a
     {i # a and (i <= a and b = a * (i + 1))}
     ⊨
     {i + 1 <= a and b = a * (i + 1)}
-    i := i + 1;
+    i := i + 1
     {i <= a and b = a * i}
 end
 {not (i # a) and (i <= a and b = a * i)}
 ⊨
 {b = a * a}
-
-
-# the equivalent cumbersome notation of this project (currently):
-{a >= 0} skip {a >= 0};
-{a >= 0 and 0 = 0} b := 0 {a >= 0 and b = 0};
-{a >= 0 and b = 0 and 0 = 0} i := 0 {a >= 0 and b = 0 and i = 0};
-{i <= a and b = a * i}
-while (i # a) do
-    {i # a and (i <= a and b = a * i)}
-    skip
-    {i # a and (i <= a and b = a * i)};
-    {i # a and (i <= a and b + a = a * (i + 1))}
-    b := b + a
-    {i # a and (i <= a and b = a * (i + 1))};
-    {i + 1 <= a and b = a * (i + 1)}
-    i := i + 1
-    {i <= a and b = a * i}
-end
-{not (i # a) and (i <= a and b = a * i)};
-{b = a * a}
-skip
-{b = a * a}
 ```
 
-Note in particular the use of `;` and `skip` to imitate `⊨`. Additionally, one must be very careful
+Note that you may use `⊨` or `|=` for rules of consequence.  
+Additionally, one must be very careful
 writing the conditions for `if` and `while` - their conditions must be ANDed at the highest level: 
 ```
 # this is okay (note the parentheses that force precedence)
