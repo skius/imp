@@ -1,0 +1,21 @@
+{true}
+a := 0 - 10
+{true}
+|=
+{a = a}
+b := a
+{b = a}
+if b >= 0 then
+    {b >= 0 and (b = a)}
+    skip
+    {b >= 0 and (b = a)}
+    |=
+    {(a < 0 -> b = 0 - a) and (a >= 0 -> b = a)}
+else
+    {not(b >= 0) and (b = a)}
+    |=
+    {(a < 0 -> (b * (0 - 1)) = 0 - a) and (a >= 0 -> (b * (0 - 1)) = a)}
+    b := b * (0 - 1)
+    {(a < 0 -> b = 0 - a) and (a >= 0 -> b = a)}
+end
+{(a < 0 -> b = 0 - a) and (a >= 0 -> b = a)}

@@ -40,6 +40,8 @@ The core IMP syntax is precisely the same as introduced in the lecture (incl. sh
 The syntax to verify axiomatic derivations is the same as the introduced "Proof Outline", except that there
 are no semi-colons and in the case of total correctness proofs no `⇓`.
 
+The syntactic sugar for `->`, `true` and `false` boolean expressions is also implemented as usual.
+
 Files that use the proof outline syntax (e.g. [`examples/swap.imp`](./examples/swap.imp)) may be used by all semantics, 
 but files that only use the core IMP syntax (e.g. [`examples/abs.imp`](./examples/abs.imp)) may only be used by the
 big-step and small-step semantics.
