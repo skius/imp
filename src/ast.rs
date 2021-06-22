@@ -97,7 +97,7 @@ impl AxStm {
                 let then_string = then_block.indent_string(prefix.clone() + "    ");
                 let else_string = else_block.indent_string(prefix.clone() + "    ");
 
-                format!("{}if {:?} then\n{}\nelse{}\nend", prefix, cond, then_string, else_string)
+                format!("{}if {:?} then\n{}\nelse\n{}\nend", prefix, cond, then_string, else_string)
             },
             AxStm::While(cond, inner_block) => {
                 let inner_string = inner_block.indent_string(prefix.clone() + "    ");

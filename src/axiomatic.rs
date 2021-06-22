@@ -150,41 +150,41 @@ fn verify_assertion_chain(cfg: &z3::Config, AssertionChain(chain): AssertionChai
 //     println!("Successfully verified program.");
 // }
 
-fn verify_cons_single(ctx: &z3::Context, s: Box<StmAx>) {
-    match *s {
-        StmAx::Seq(stm1, stm2) => {
-            verify_cons_single(ctx, stm1.clone());
-
-
-            let post = stm1.get_post();
-            let pre = stm2.get_pre();
-
-            println!("Verifying ConsAx rule:\n{{ {:?} }} |= {{ {:?} }}", post, pre);
-
-            let post_entails_pre = entails(ctx, post.to_z3_bool(ctx), pre.to_z3_bool(ctx));
-            let mut solver = z3::Solver::new(ctx);
-            solver.assert(&post_entails_pre);
-            let res = solver.check();
-            if res == SatResult::Unsat {
-                println!("Verified.");
-            } else {
-                println!("ERROR! Model where entailment does not hold:");
-                println!("{:?}", solver.get_model().unwrap());
-                panic!("verification failed.");
-            }
-
-            verify_cons_single(ctx, stm2);
-        },
-        StmAx::If(_, _, then_stm, else_stm, _) => {
-            verify_cons_single(ctx, then_stm);
-            verify_cons_single(ctx, else_stm);
-        },
-        StmAx::While(_, _, stm_inner, _) => {
-            verify_cons_single(ctx, stm_inner);
-        }
-        _ => (),
-    }
-}
+// fn verify_cons_single(ctx: &z3::Context, s: Box<StmAx>) {
+//     match *s {
+//         StmAx::Seq(stm1, stm2) => {
+//             verify_cons_single(ctx, stm1.clone());
+//
+//
+//             let post = stm1.get_post();
+//             let pre = stm2.get_pre();
+//
+//             println!("Verifying ConsAx rule:\n{{ {:?} }} |= {{ {:?} }}", post, pre);
+//
+//             let post_entails_pre = entails(ctx, post.to_z3_bool(ctx), pre.to_z3_bool(ctx));
+//             let mut solver = z3::Solver::new(ctx);
+//             solver.assert(&post_entails_pre);
+//             let res = solver.check();
+//             if res == SatResult::Unsat {
+//                 println!("Verified.");
+//             } else {
+//                 println!("ERROR! Model where entailment does not hold:");
+//                 println!("{:?}", solver.get_model().unwrap());
+//                 panic!("verification failed.");
+//             }
+//
+//             verify_cons_single(ctx, stm2);
+//         },
+//         StmAx::If(_, _, then_stm, else_stm, _) => {
+//             verify_cons_single(ctx, then_stm);
+//             verify_cons_single(ctx, else_stm);
+//         },
+//         StmAx::While(_, _, stm_inner, _) => {
+//             verify_cons_single(ctx, stm_inner);
+//         }
+//         _ => (),
+//     }
+// }
 
 fn entails<'a>(ctx: &'a z3::Context, a: z3::ast::Bool<'a>, b: z3::ast::Bool<'a>) -> z3::ast::Bool<'a> {
     z3::ast::Bool::and(ctx, &[&a, &b.not()])

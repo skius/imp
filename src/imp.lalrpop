@@ -63,6 +63,7 @@ StmAx1: Box<StmAx> = {
 
 
 pub Bexp = {
+    <lhs:Bexp0> "->" <rhs:Bexp> => Box::new(Bexp::Bop(Box::new(Bexp::Not(lhs)), Bopcode::Or, rhs)),
     Bexp0
 }
 
@@ -83,6 +84,8 @@ Bexp2: Box<Bexp> = {
 
 Bexp3: Box<Bexp> = {
     Aexp Bexp3Op Aexp => Box::new(Bexp::Rop(<>)),
+    "true" => Box::new(Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Eq, Box::new(Aexp::Numeral(0)))),
+    "false" => Box::new(Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Eq, Box::new(Aexp::Numeral(1)))),
     "(" <Bexp> ")"
 }
 
