@@ -1,0 +1,6 @@
+a := 0 - 10;
+if a >= 0 then
+    skip
+else
+    a := a * (0 - 1)
+end
