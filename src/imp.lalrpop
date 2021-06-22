@@ -1,0 +1,120 @@
+use std::str::FromStr;
+use crate::ast::{Aexp, Opcode, Bexp, Ropcode, Bopcode, Stm, StmAx};
+
+grammar;
+
+pub Stm: Box<Stm> = {
+    <Stm> ";" <Stm1> => Box::new(Stm::Seq(<>)),
+    Stm1,
+}
+
+Stm1: Box<Stm> = {
+    <Var> ":=" <Aexp> => Box::new(Stm::Assign(<>)),
+    "skip" => Box::new(Stm::Skip),
+    "if" <Bexp> "then" <Stm> "else" <Stm> "end" => Box::new(Stm::If(<>)),
+    "if" <Bexp> "then" <Stm> "end" => Box::new(Stm::If(<>, Box::new(Stm::Skip))),
+    "while" <Bexp> "do" <Stm> "end" => Box::new(Stm::While(<>)),
+    "(" <Stm> ")",
+}
+
+pub StmAx: Box<StmAx> = {
+    <StmAx> ";" <StmAx1> => Box::new(StmAx::Seq(<>)),
+    StmAx1,
+}
+
+// StmAx0 = {
+//     "{" <pre:Bexp> "}" <stm:StmAx1> "{" <post:Bexp> "}"
+// }
+
+StmAx1: Box<StmAx> = {
+    "{" <Bexp> "}" <Var> ":=" <Aexp> "{" <Bexp> "}" => Box::new(StmAx::Assign(<>)),
+    "{" <Bexp> "}" "skip" "{" <Bexp> "}" => Box::new(StmAx::Skip(<>)),
+    "{" <Bexp> "}" "if" <Bexp> "then" <StmAx> "else" <StmAx> "end" "{" <Bexp> "}" => Box::new(StmAx::If(<>)),
+    "{" <pre:Bexp> "}" "if" <cond:Bexp> "then" <then:StmAx> "end" "{" <post:Bexp> "}" => Box::new(StmAx::If(pre, cond, then, Box::new(
+        StmAx::Skip(Box::new(Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Eq, Box::new(Aexp::Numeral(0)))), Box::new(Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Eq, Box::new(Aexp::Numeral(0)))))
+    ), post)),
+    "{" <Bexp> "}" "while" <Bexp> "do" <StmAx> "end" "{" <Bexp> "}" => Box::new(StmAx::While(<>)),
+    "(" <StmAx> ")"
+}
+
+
+
+
+
+pub Bexp = {
+    Bexp0
+}
+
+Bexp0: Box<Bexp> = {
+    Bexp0 Bexp0Op Bexp1 => Box::new(Bexp::Bop(<>)),
+    Bexp1
+}
+
+Bexp1: Box<Bexp> = {
+    Bexp1 Bexp1Op Bexp2 => Box::new(Bexp::Bop(<>)),
+    Bexp2
+}
+
+Bexp2: Box<Bexp> = {
+    "not" <Bexp3> => Box::new(Bexp::Not(<>)),
+    Bexp3
+}
+
+Bexp3: Box<Bexp> = {
+    Aexp Bexp3Op Aexp => Box::new(Bexp::Rop(<>)),
+    "(" <Bexp> ")"
+}
+
+
+Bexp0Op: Bopcode = {
+    "or" => Bopcode::Or,
+}
+
+Bexp1Op: Bopcode = {
+    "and" => Bopcode::And,
+}
+
+Bexp3Op: Ropcode = {
+    "=" => Ropcode::Eq,
+    "#" => Ropcode::Ne,
+    "<" => Ropcode::Lt,
+    "<=" => Ropcode::Le,
+    ">" => Ropcode::Gt,
+    ">=" => Ropcode::Ge,
+}
+
+
+
+pub Aexp = {
+    Aexp0
+}
+
+Aexp0: Box<Aexp> = {
+    Aexp0 Aexp0Op Aexp1 => Box::new(Aexp::Op(<>)),
+    Aexp1
+}
+
+Aexp1: Box<Aexp> = {
+    Aexp1 Aexp1Op Aexp2 => Box::new(Aexp::Op(<>)),
+    Aexp2
+}
+
+Aexp2: Box<Aexp> = {
+    Numeral => Box::new(Aexp::Numeral(<>)),
+    Var => Box::new(Aexp::Var(<>)),
+    "(" <Aexp> ")"
+}
+
+Var: String = r"[A-Za-z][A-Za-z0-9]*" => (<>).to_owned();
+
+Numeral: i64 = r"[0-9]+" => i64::from_str(<>).unwrap();
+
+Aexp0Op: Opcode = {
+    "+" => Opcode::Add,
+    "-" => Opcode::Sub
+}
+
+Aexp1Op: Opcode = {
+    "*" => Opcode::Mul,
+}
+

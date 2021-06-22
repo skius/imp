@@ -1,0 +1,19 @@
+{a >= 0} skip {a >= 0};
+{a >= 0 and 0 = 0} b := 0 {a >= 0 and b = 0};
+{a >= 0 and b = 0 and 0 = 0} i := 0 {a >= 0 and b = 0 and i = 0};
+{i <= a and b = a * i}
+while (i # a) do
+    {i # a and (i <= a and b = a * i)}
+    skip
+    {i # a and (i <= a and b = a * i)};
+    {i # a and (i <= a and b + a = a * (i + 1))}
+    b := b + a
+    {i # a and (i <= a and b = a * (i + 1))};
+    {i + 1 <= a and b = a * (i + 1)}
+    i := i + 1
+    {i <= a and b = a * i}
+end
+{not (i # a) and (i <= a and b = a * i)};
+{b = a * a}
+skip
+{b = a * a}
