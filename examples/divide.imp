@@ -1,0 +1,21 @@
+{N >= 0 and D > 0 and d = D and r = N and q = 0}
+|=
+{N = q * d + r and r + d >= 0 and d = D and d > 0}
+while r >= 0 do
+    {r >= 0 and (N = q * d + r and r + d >= 0 and d = D and d > 0) and r = Z}
+    |=
+    {N = (q + 1) * d + r - d and r - d + d >= 0 and d = D and d > 0 and r - d < Z}
+    r := r - d
+    {N = (q + 1) * d + r and r + d >= 0 and d = D and d > 0 and r < Z}
+    q := q + 1
+    {(N = q * d + r and r + d >= 0 and d = D and d > 0) and r < Z}
+end
+{not(r >= 0) and (N = q * d + r and r + d >= 0 and d = D and d > 0)}
+|=
+{N = (q-1) * d + (r + d) and r + d >= 0 and r + d < d and d = D and d > 0}
+r := r + d
+{N = (q-1) * d + r and r >= 0 and r < d and d = D and d > 0}
+q := q - 1
+{N = q * d + r and r >= 0 and r < d and d = D and d > 0}
+|=
+{N = q * D + r and r >= 0 and r < D}

@@ -19,8 +19,8 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 5 {
-        println!("Usage: ./imp <filename> <true/false: run Big-Step> <true/false: run Small-Step> <true/false: run Axiomatic>");
-        println!("Example: ./imp examples/square.imp false false true");
+        println!("Usage: ./imp <filename> <true/false: run big-step> <true/false: run small-step> <total/partial/false: run axiomatic>");
+        println!("Example: ./imp examples/square.imp false false partial");
         return;
     }
 
@@ -43,8 +43,8 @@ fn main() {
             prog_res.unwrap()
         };
         // let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
-        println!("\nRunning Big-Step evaluator...");
-        println!("Big-Step result: {:?}", big_step::run(Configuration::Nonterminal(prog, State::new())));
+        println!("\nRunning big-step evaluator...");
+        println!("Big-step result: {:?}", big_step::run(Configuration::Nonterminal(prog, State::new())));
     }
     if run_small == "true" {
         // Allow both pure IMP syntax and pre/post-condition syntax
@@ -55,27 +55,32 @@ fn main() {
             prog_res.unwrap()
         };
         // let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
-        println!("\nRunning Small-Step evaluator...");
+        println!("\nRunning small-step evaluator...");
         let mut sos = small_step::SOS::new(Configuration::Nonterminal(prog.clone(), State::new()));
         sos.run_execution();
     }
-    // if run_axiomatic == "true" {
-    //     // Force syntax with pre/post-conditions
-    //     let prog = imp::StmAxParser::new().parse(contents.as_str()).unwrap();
-    //     println!("\nVerifying Axiomatic Semantics for program...");
-    //     axiomatic::verify_rules_except_cons(prog.clone());
-    //     axiomatic::verify_cons(prog);
-    // }
 
-    if run_axiomatic == "true" {
+    if run_axiomatic == "partial" || run_axiomatic == "true" {
         // Force syntax with pre/post-conditions
         let prog = imp::AxBlockParser::new().parse(contents.as_str()).unwrap();
-        println!("\nVerifying Axiomatic Semantics for program...");
+        println!("\nVerifying partial correctness for program using axiomatic semantics...");
         println!("{:?}\n", prog);
 
         let cfg = z3::Config::new();
-        axiomatic::verify_block_except_cons(prog.clone());
-        axiomatic::verify_cons(&cfg, prog);
-        println!("Successfully verified program.");
+        axiomatic::verify_block_except_cons_partial(&prog);
+        axiomatic::verify_cons_partial(&cfg, &prog);
+        println!("Successfully verified partial correctness of program.");
+    }
+
+    if run_axiomatic == "total" {
+        // Force syntax with pre/post-conditions
+        let prog = imp::AxBlockParser::new().parse(contents.as_str()).unwrap();
+        println!("\nVerifying total correctness for program using axiomatic semantics...");
+        println!("{:?}\n", prog);
+
+        let cfg = z3::Config::new();
+        axiomatic::verify_block_except_cons_total(&prog);
+        axiomatic::verify_cons_total(&cfg, &prog);
+        println!("Successfully verified total correctness of program.");
     }
 }

@@ -31,16 +31,17 @@ $ cargo build
 ```
 ./imp <filename> <true/false: run big-step> <true/false: run small-step> <true/false: run axiomatic>
 ```
-For example, `./imp examples/square.imp true true true` evaluates `examples/square.imp` with both big-step and
-small-step semantics and verifies the given derivations.
+For example, `./imp examples/square.imp true true partial` evaluates `examples/square.imp` with both big-step and
+small-step semantics and verifies the given derivations for partial correctness, and `./imp examples/divide.imp 
+false false total` just verifies `examples/divide.imp` for total correctness.
 
 ### IMP Syntax
 The core IMP syntax is precisely the same as introduced in the lecture (incl. shorthands). 
 The syntax to verify axiomatic derivations is the same as the introduced "Proof Outline", except that there
-are no semi-colons.
+are no semi-colons and in the case of total correctness proofs no `⇓`.
 
-Files that use the proof outline syntax (e.g. [examples/swap.imp](./examples/swap.imp)) may be used by all semantics, 
-but files that only use the core IMP syntax (e.g. [examples/abs.imp](./examples/abs.imp)) may only be used by the
+Files that use the proof outline syntax (e.g. [`examples/swap.imp`](./examples/swap.imp)) may be used by all semantics, 
+but files that only use the core IMP syntax (e.g. [`examples/abs.imp`](./examples/abs.imp)) may only be used by the
 big-step and small-step semantics.
 
 **Note for proof outline syntax:** You may use `⊨` or `|=` for rules of consequence.  
@@ -63,3 +64,6 @@ while (i # a) do
     {(((i # a) and i <= a) and b = a * i)}
 # where the condition (i # a) is at the innermost/lowest level instead of the highest.
 ```
+
+To make sure no errors happen because of to this, always write these assertions with explicit parentheses like `b and (P)`  resp. `b and (P) and e = Z` for
+while loops in total correctness proofs (see [`examples/divide.imp`](./examples/divide.imp) for an example of a total correctness proof).

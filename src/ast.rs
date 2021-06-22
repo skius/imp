@@ -89,6 +89,26 @@ impl AxStm {
         })
     }
 
+    pub fn get_while_things(&self) -> (&Box<Bexp>, &Box<Aexp>, &Box<Aexp>) {
+        match &self {
+            AxStm::While(cond, AxBlock(AssertionChain(inner_pre_chain), inner_rem)) => {
+                let inner_pre = inner_pre_chain.first().unwrap();
+                let inner_post = inner_rem.last().unwrap().1.0.last().unwrap();
+
+                match inner_pre {
+                    Bexp::Bop(partial, Bopcode::And, variant_exp) => {
+                        match variant_exp.as_ref() {
+                            Bexp::Rop(variant, Ropcode::Eq, logical_var) => (partial, variant, logical_var),
+                            _ => panic!("A total correctness proof requires an inner pre-condition of the form { condition and ( P ) and variant = LOGICAL_VAR}"),
+                        }
+                    },
+                    _ => panic!("A total correctness proof requires an inner pre-condition of the form { condition and ( P ) and variant = LOGICAL_VAR}"),
+                }
+            }
+            _ => unreachable!()
+        }
+    }
+
     pub fn indent_string(&self, prefix: String) -> String {
         match self {
             AxStm::Skip => prefix + "skip",
