@@ -41,7 +41,6 @@ are no semi-colons.
 
 Example (`square.imp`, squares `a` and stores it in `b` using only addition):
 ```
-# proof outline as in the course:
 {a >= 0}
 ⊨
 {a >= 0 and 0 = 0 and 0 = 0}
@@ -80,4 +79,10 @@ while (i # a) do
 {i <= a and b = a * i}
 while (i # a) do
     {i # a and i <= a and b = a * i}
+    
+# because it is equivalent to
+{i <= a and b = a * i}
+while (i # a) do
+    {(((i # a) and i <= a) and b = a * i)}
+# where the condition (i # a) is at the innermost/lowest level instead of the highest.
 ```
