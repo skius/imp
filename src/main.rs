@@ -36,13 +36,25 @@ fn main() {
 
     if run_big == "true" {
         // Allow both pure IMP syntax and pre/post-condition syntax
-        let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
+        let prog_res = imp::StmParser::new().parse(contents.as_str());
+        let prog = if prog_res.is_err() {
+            imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm()
+        } else {
+            prog_res.unwrap()
+        };
+        // let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
         println!("\nRunning Big-Step evaluator...");
         println!("Big-Step result: {:?}", big_step::run(Configuration::Nonterminal(prog, State::new())));
     }
     if run_small == "true" {
         // Allow both pure IMP syntax and pre/post-condition syntax
-        let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
+        let prog_res = imp::StmParser::new().parse(contents.as_str());
+        let prog = if prog_res.is_err() {
+            imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm()
+        } else {
+            prog_res.unwrap()
+        };
+        // let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
         println!("\nRunning Small-Step evaluator...");
         let mut sos = small_step::SOS::new(Configuration::Nonterminal(prog.clone(), State::new()));
         sos.run_execution();
