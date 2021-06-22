@@ -295,16 +295,70 @@ impl Bexp {
             },
         }
     }
+
+    pub fn pretty_string(&self) -> String {
+        match &self {
+            Bexp::Rop(left, rop, right) => format!("{} {:?} {}", left.pretty_string(), rop, right.pretty_string()),
+            Bexp::Not(not) => {
+                if not.precedence() < self.precedence() {
+                    format!("not ({})", not.pretty_string())
+                } else {
+                    format!("not {}", not.pretty_string())
+                }
+            },
+            Bexp::Bop(left, bop, right) => {
+                let use_left_paren = self.precedence() > left.precedence() ||
+                    self.precedence() == left.precedence() && self.is_right_associative();
+
+                let use_right_paren = self.precedence() > right.precedence() ||
+                    self.precedence() == right.precedence() && self.is_left_associative();
+
+                let left_string = if use_left_paren {
+                    format!("({})", left.pretty_string())
+                } else {
+                    format!("{}", left.pretty_string())
+                };
+
+                let right_string = if use_right_paren {
+                    format!("({})", right.pretty_string())
+                } else {
+                    format!("{}", right.pretty_string())
+                };
+
+                format!("{} {:?} {}", left_string, bop, right_string)
+            }
+        }
+    }
+
+    pub fn is_right_associative(&self) -> bool {
+        false // we don't have right-associative arithmetic operators
+    }
+
+    pub fn is_left_associative(&self) -> bool {
+        true // we don't have right-associative arithmetic operators
+    }
+
+    fn precedence(&self) -> u32 {
+        match &self {
+            Bexp::Rop(_, _, _) => 4,
+            Bexp::Not(_) => 3,
+            Bexp::Bop(_, Bopcode::And, _) => 2,
+            Bexp::Bop(_, Bopcode::Or, _) => 1,
+        }
+    }
 }
 
 impl Debug for Bexp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Bexp::Rop(left, rop, right) => f.write_str(format!("({:?} {:?} {:?})", *left, rop, *right).as_str()),
-            Bexp::Bop(left, bop, right) => f.write_str(format!("({:?} {:?} {:?})", *left, bop, *right).as_str()),
-            Bexp::Not(bexp) => f.write_str(format!("(not {:?})", *bexp).as_str()),
-        }
+        f.write_str(&self.pretty_string())
     }
+    // fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    //     match self {
+    //         Bexp::Rop(left, rop, right) => f.write_str(format!("({:?} {:?} {:?})", *left, rop, *right).as_str()),
+    //         Bexp::Bop(left, bop, right) => f.write_str(format!("({:?} {:?} {:?})", *left, bop, *right).as_str()),
+    //         Bexp::Not(bexp) => f.write_str(format!("(not {:?})", *bexp).as_str()),
+    //     }
+    // }
 }
 
 
@@ -349,6 +403,52 @@ impl Aexp {
         }
     }
 
+    pub fn pretty_string(&self) -> String {
+        match &self {
+            Aexp::Numeral(num) => format!("{}", num),
+            Aexp::Var(v) => format!("{}", v),
+            Aexp::Op(left, op, right) => {
+                let use_left_paren = self.precedence() > left.precedence() ||
+                    self.precedence() == left.precedence() && self.is_right_associative();
+
+                let use_right_paren = self.precedence() > right.precedence() ||
+                    self.precedence() == right.precedence() && self.is_left_associative();
+
+                let left_string = if use_left_paren {
+                    format!("({})", left.pretty_string())
+                } else {
+                    format!("{}", left.pretty_string())
+                };
+
+                let right_string = if use_right_paren {
+                    format!("({})", right.pretty_string())
+                } else {
+                    format!("{}", right.pretty_string())
+                };
+
+                format!("{} {:?} {}", left_string, op, right_string)
+            }
+        }
+    }
+
+    pub fn is_right_associative(&self) -> bool {
+        false // we don't have right-associative arithmetic operators
+    }
+
+    pub fn is_left_associative(&self) -> bool {
+        true // we don't have right-associative arithmetic operators
+    }
+
+    fn precedence(&self) -> u32 {
+        match &self {
+            Aexp::Numeral(_) => 3,
+            Aexp::Var(_) => 3,
+            Aexp::Op(_, Opcode::Add, _) => 1,
+            Aexp::Op(_, Opcode::Sub, _) => 1,
+            Aexp::Op(_, Opcode::Mul, _) => 2,
+        }
+    }
+
     pub fn substitute(self, var: &Var, new_aexp: &Aexp) -> Self {
         match self {
             Aexp::Var(this_var) if &this_var == var => new_aexp.clone(),
@@ -364,10 +464,13 @@ impl Aexp {
 
 impl Debug for Aexp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Aexp::Numeral(num) => std::fmt::Debug::fmt(num, f),
-            Aexp::Var(var) => std::fmt::Display::fmt(var, f),
-            Aexp::Op(left, op, right) => f.write_str(format!("({:?} {:?} {:?})", *left, op, *right).as_str())
-        }
+        f.write_str(&self.pretty_string())
     }
+    // fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    //     match self {
+    //         Aexp::Numeral(num) => std::fmt::Debug::fmt(num, f),
+    //         Aexp::Var(var) => std::fmt::Display::fmt(var, f),
+    //         Aexp::Op(left, op, right) => f.write_str(format!("({:?} {:?} {:?})", *left, op, *right).as_str())
+    //     }
+    // }
 }
