@@ -1,6 +1,14 @@
 use super::ast::*;
 use crate::state::State;
 
+fn unsupported_op(op: &Opcode) -> ! {
+    panic!("Operation {:?} is not valid IMP! You may only use {:?} in pre-/post-conditions.", op, op)
+}
+
+fn unsupported_exp(exp: &Aexp) -> ! {
+    panic!("{:?} is not valid IMP. You may only use this expression in pre-/post-conditions.", exp)
+}
+
 pub fn arithmetic_eval(aexp: &Box<Aexp>, state: &State) -> i64 {
     match aexp.as_ref() {
         Aexp::Numeral(num) => *num,
@@ -8,6 +16,8 @@ pub fn arithmetic_eval(aexp: &Box<Aexp>, state: &State) -> i64 {
         Aexp::Op(left, Opcode::Add, right) => arithmetic_eval(left, state) + arithmetic_eval(right, state),
         Aexp::Op(left, Opcode::Sub, right) => arithmetic_eval(left, state) - arithmetic_eval(right, state),
         Aexp::Op(left, Opcode::Mul, right) => arithmetic_eval(left, state) * arithmetic_eval(right, state),
+        Aexp::Op(_, op, _) => unsupported_op(op),
+        exp => unsupported_exp(exp),
     }
 }
 

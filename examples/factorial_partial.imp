@@ -1,0 +1,17 @@
+{ x = N }
+|=
+{ x > 0 -> 1 * x! = N! and N >= x }
+y := 1
+{x > 0 -> y * x! = N! and N >= x}
+while not x = 1 do
+    { not x = 1 and (x > 0 -> y * x! = N! and N >= x)}
+    |=
+    { x - 1 > 0 -> y * x * (x-1)! = N! and N >= x - 1 }
+    y := y * x
+    { x - 1 > 0 -> y * (x-1)! = N! and N >= x - 1 }
+    x := x - 1
+    { x > 0 -> y * x! = N! and N >= x }
+end
+{not not x = 1 and (x > 0 -> y * x! = N! and N >= x) }
+|=
+{y = N! and N > 0}

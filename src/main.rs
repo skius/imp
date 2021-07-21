@@ -13,6 +13,9 @@ use ast::*;
 use std::env;
 use std::fs;
 use z3;
+use std::collections::HashMap;
+use crate::ast::Bexp::Rop;
+
 
 fn main() {
 
@@ -60,27 +63,54 @@ fn main() {
         sos.run_execution();
     }
 
+    // Setup built-in IMP functions
+    let mut funcdefs = HashMap::new();
+
+    funcdefs.insert("factorial".to_owned(), ImpFuncDef {
+        name: "factorial".to_owned(),
+        args: vec!["n".to_owned()],
+        body: Aexp::Ite(
+            Box::new(Bexp::Rop(Box::new(Aexp::Var("n".to_owned())), Ropcode::Le, Box::new(Aexp::Numeral(0)))),
+            Box::new(Aexp::Numeral(1)),
+            Box::new(Aexp::Op(
+                Box::new(Aexp::Var("n".to_owned())),
+                Opcode::Mul,
+                Box::new(Aexp::FuncApp("factorial".to_owned(),
+                                       vec![Aexp::Op(Box::new(Aexp::Var("n".to_owned())), Opcode::Sub, Box::new(Aexp::Numeral(1)))]))))
+        )
+    });
+
     if run_axiomatic == "partial" || run_axiomatic == "true" {
         // Force syntax with pre/post-conditions
-        let prog = imp::AxBlockParser::new().parse(contents.as_str()).unwrap();
+        let (funcdefs_vec, prog) = imp::AxProgramParser::new().parse(contents.as_str()).unwrap();
         println!("\nVerifying partial correctness for program using axiomatic semantics...");
         println!("{:?}\n", prog);
 
-        let cfg = z3::Config::new();
+        for funcdef in funcdefs_vec {
+            funcdefs.insert(funcdef.name.clone(), funcdef);
+        }
+
+        let mut cfg = z3::Config::new();
+        cfg.set_timeout_msec(10000);
         axiomatic::verify_block_except_cons_partial(&prog);
-        axiomatic::verify_cons_partial(&cfg, &prog);
-        println!("Successfully verified partial correctness of program.");
+        axiomatic::verify_cons_partial(&cfg, &prog, &funcdefs);
+        println!("Successfully verified partial correctness of program. (if there are no ERRORs)");
     }
 
     if run_axiomatic == "total" {
         // Force syntax with pre/post-conditions
-        let prog = imp::AxBlockParser::new().parse(contents.as_str()).unwrap();
+        let (funcdefs_vec, prog) = imp::AxProgramParser::new().parse(contents.as_str()).unwrap();
         println!("\nVerifying total correctness for program using axiomatic semantics...");
         println!("{:?}\n", prog);
 
-        let cfg = z3::Config::new();
+        for funcdef in funcdefs_vec {
+            funcdefs.insert(funcdef.name.clone(), funcdef);
+        }
+
+        let mut cfg = z3::Config::new();
+        cfg.set_timeout_msec(10000);
         axiomatic::verify_block_except_cons_total(&prog);
-        axiomatic::verify_cons_total(&cfg, &prog);
-        println!("Successfully verified total correctness of program.");
+        axiomatic::verify_cons_total(&cfg, &prog, &funcdefs);
+        println!("Successfully verified total correctness of program. (if there are no ERRORs)");
     }
 }

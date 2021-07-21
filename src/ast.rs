@@ -1,6 +1,9 @@
 use std::fmt::{Debug, Formatter};
 use std::hint::unreachable_unchecked;
-use z3::ast::Ast;
+use z3::ast::{Ast, Dynamic};
+use std::collections::HashMap;
+use z3::{RecFuncDecl, Sort};
+use std::convert::TryInto;
 
 pub type Var = String;
 
@@ -254,12 +257,12 @@ pub enum Bexp {
 }
 
 impl Bexp {
-    pub fn to_z3_bool<'a>(&self, ctx: &'a z3::Context) -> z3::ast::Bool<'a> {
+    pub fn to_z3_bool<'a>(&self, ctx: &'a z3::Context, funcmap: &FuncMap<'a>) -> z3::ast::Bool<'a> {
         match self {
-            Bexp::Not(bexp_inner) => bexp_inner.to_z3_bool(ctx).not(),
+            Bexp::Not(bexp_inner) => bexp_inner.to_z3_bool(ctx, funcmap).not(),
             Bexp::Rop(left, rop, right) => {
-                let left = left.to_z3_int(ctx);
-                let right = right.to_z3_int(ctx);
+                let left = left.to_z3_int(ctx, funcmap);
+                let right = right.to_z3_int(ctx, funcmap);
                 match rop {
                     Ropcode::Eq => left._eq(&right),
                     Ropcode::Ne => (left._eq(&right)).not(),
@@ -270,8 +273,8 @@ impl Bexp {
                 }
             },
             Bexp::Bop(left, bop, right) => {
-                let left = left.to_z3_bool(ctx);
-                let right = right.to_z3_bool(ctx);
+                let left = left.to_z3_bool(ctx, funcmap);
+                let right = right.to_z3_bool(ctx, funcmap);
                 match bop {
                     Bopcode::And => z3::ast::Bool::and(ctx, &[&left, &right]),
                     Bopcode::Or => z3::ast::Bool::or(ctx, &[&left, &right]),
@@ -367,6 +370,8 @@ pub enum Opcode {
     Add,
     Sub,
     Mul,
+    Mod,
+    Pow,
 }
 
 impl Debug for Opcode {
@@ -375,31 +380,99 @@ impl Debug for Opcode {
             Opcode::Add => f.write_str("+"),
             Opcode::Sub => f.write_str("-"),
             Opcode::Mul => f.write_str("*"),
+            Opcode::Mod => f.write_str("%"),
+            Opcode::Pow => f.write_str("^"),
         }
     }
 }
+
+// #[derive(Clone, Eq, PartialEq)]
+// pub enum Unopcode {
+//     Fact,
+// }
+//
+// impl Debug for Unopcode {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+//         match self {
+//             Unopcode::Fact => f.write_str("!"),
+//         }
+//     }
+// }
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct ImpFuncDef {
+    pub name: String,
+    pub args: Vec<Var>,
+    pub body: Aexp,
+}
+
+impl ImpFuncDef {
+    pub fn to_z3_func_decl<'ctx>(&self, ctx: &'ctx z3::Context) -> z3::RecFuncDecl<'ctx> {
+        // let domain: Vec<_> = self.args.iter().map(|_| &Sort::int(&ctx)).collect();
+        let domain = vec![Sort::int(&ctx); self.args.len()];
+        let domain: Vec<_> = domain.iter().collect();
+        let f = RecFuncDecl::new(ctx, self.name.as_str(), domain.as_slice(), &Sort::int(&ctx));
+
+        f
+    }
+
+    pub fn define<'a>(&self, ctx: &'a z3::Context, funcmap: &FuncMap<'a>) {
+        let mut f = funcmap.get(&self.name).unwrap();
+
+        let args: Vec<_> = self.args.iter().map(|arg| z3::ast::Dynamic::from(z3::ast::Int::new_const(&ctx, arg.as_str()))).collect();
+        let args: Vec<_> = args.iter().collect();
+        f.add_def(args.as_slice(), &self.body.to_z3_int(&ctx, funcmap));
+    }
+}
+
+type FuncMap<'ctx> = HashMap<String, z3::RecFuncDecl<'ctx>>;
 
 #[derive(Clone, Eq, PartialEq)]
 pub enum Aexp {
     Numeral(i64),
     Var(Var),
     Op(Box<Aexp>, Opcode, Box<Aexp>),
+    FuncApp(String, Vec<Aexp>),
+    Ite(Box<Bexp>, Box<Aexp>, Box<Aexp>),
+    // Unop(Box<Aexp>, Unopcode),
 }
 
 impl Aexp {
-    pub fn to_z3_int<'a>(&self, ctx: &'a z3::Context) -> z3::ast::Int<'a> {
+    pub fn to_z3_int<'a>(&self, ctx: &'a z3::Context, funcmap: &FuncMap<'a>) -> z3::ast::Int<'a> {
         match self {
             Aexp::Numeral(num) => z3::ast::Int::from_i64(ctx, *num),
             Aexp::Var(var) => z3::ast::Int::new_const(ctx, var.as_str()),
             Aexp::Op(left, op, right) => {
-                let left = left.to_z3_int(ctx);
-                let right = right.to_z3_int(ctx);
+                let left = left.to_z3_int(ctx, funcmap);
+                let right = right.to_z3_int(ctx, funcmap);
                 match op {
                     Opcode::Add => z3::ast::Int::add(ctx, &[&left, &right]),
                     Opcode::Sub => z3::ast::Int::sub(ctx, &[&left, &right]),
                     Opcode::Mul => z3::ast::Int::mul(ctx, &[&left, &right]),
+                    Opcode::Mod => left.modulo(&right),
+                    Opcode::Pow => left.power(&right),
                 }
             },
+            Aexp::FuncApp(fname, args) => {
+                let args: Vec<z3::ast::Dynamic<'a>> = args.into_iter().map(|arg| {
+                    arg.to_z3_int(&ctx, &funcmap).into()
+                }).collect();
+
+                let args: Vec<_> = args.as_slice().into_iter().map(|v| v).collect();
+                let args = args.as_slice();
+                let func = funcmap.get(fname).unwrap();
+                let res = func.apply(args);
+                let res = res.as_int().unwrap();
+
+                res
+            },
+            Aexp::Ite(cond, t, e) => {
+                let cond = cond.to_z3_bool(ctx, funcmap);
+                let t = t.to_z3_int(ctx, funcmap);
+                let e = e.to_z3_int(ctx, funcmap);
+
+                cond.ite(&t, &e)
+            }
         }
     }
 
@@ -427,7 +500,15 @@ impl Aexp {
                 };
 
                 format!("{} {:?} {}", left_string, op, right_string)
-            }
+            },
+            Aexp::FuncApp(fname, args) => {
+                let args: Vec<String> = args.into_iter().map(|arg| arg.pretty_string()).collect();
+                let arg_string = args.join(", ");
+                format!("{}({})", fname, arg_string)
+            },
+            Aexp::Ite(cond, t, e) => {
+                format!("{} ? {} : {}", cond.pretty_string(), t.pretty_string(), e.pretty_string())
+            },
         }
     }
 
@@ -441,11 +522,15 @@ impl Aexp {
 
     fn precedence(&self) -> u32 {
         match &self {
-            Aexp::Numeral(_) => 3,
-            Aexp::Var(_) => 3,
+            Aexp::Numeral(_) => 4,
+            Aexp::Var(_) => 4,
             Aexp::Op(_, Opcode::Add, _) => 1,
             Aexp::Op(_, Opcode::Sub, _) => 1,
             Aexp::Op(_, Opcode::Mul, _) => 2,
+            Aexp::Op(_, Opcode::Mod, _) => 2,
+            Aexp::Op(_, Opcode::Pow, _) => 3,
+            Aexp::FuncApp(_, _) => 4,
+            Aexp::Ite(_, _, _) => 0,
         }
     }
 
@@ -457,6 +542,15 @@ impl Aexp {
                 let right = right.substitute(var, new_aexp);
                 Aexp::Op(Box::new(left), op, Box::new(right))
             },
+            Aexp::Ite(cond, t, e) => {
+                let cond = Box::new(cond.substitute(var, new_aexp));
+                let t = Box::new(t.substitute(var, new_aexp));
+                let e = Box::new(e.substitute(var, new_aexp));
+                Aexp::Ite(cond, t, e)
+            }
+            Aexp::FuncApp(fname, args) => {
+                Aexp::FuncApp(fname, args.into_iter().map(|arg| arg.substitute(var, new_aexp)).collect())
+            }
             _ => self,
         }
     }

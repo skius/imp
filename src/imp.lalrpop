@@ -4,6 +4,29 @@ use crate::ast::*;
 
 grammar;
 
+pub AxProgram: (Vec<ImpFuncDef>, AxBlock) = {
+    <funcs:(FuncDef*)> <prog:AxBlock> => (funcs, prog),
+}
+
+FuncDef: ImpFuncDef = {
+    <name:Var> "(" <args:Params> ")" "{"
+        <body:Aexp>
+    "}" => ImpFuncDef {name:name, args:args, body:*body},
+
+}
+
+Params: Vec<Var> = {
+    => vec![],
+    <param:Var> <mut params:ParamsHelper> => {
+        params.insert(0, param);
+        params
+    }
+}
+
+ParamsHelper: Vec<Var> = {
+    <("," <Var>)*> => <>,
+}
+
 pub AssertionChain: AssertionChain = {
     "{" <first:Bexp> "}" <rem:(Entailment "{" <Bexp> "}")*> => AssertionChain::new(first, rem)
 }
@@ -78,7 +101,7 @@ Bexp1: Box<Bexp> = {
 }
 
 Bexp2: Box<Bexp> = {
-    "not" <Bexp3> => Box::new(Bexp::Not(<>)),
+    "not" <Bexp2> => Box::new(Bexp::Not(<>)),
     Bexp3
 }
 
@@ -110,23 +133,47 @@ Bexp3Op: Ropcode = {
 
 
 pub Aexp = {
+    "(" <Bexp> ")" "?" <Aexp> ":" <Aexp> => Box::new(Aexp::Ite(<>)),
     Aexp0
 }
 
 Aexp0: Box<Aexp> = {
     Aexp0 Aexp0Op Aexp1 => Box::new(Aexp::Op(<>)),
-    Aexp1
+    Aexp1,
 }
 
 Aexp1: Box<Aexp> = {
     Aexp1 Aexp1Op Aexp2 => Box::new(Aexp::Op(<>)),
-    Aexp2
+    Aexp2,
 }
 
 Aexp2: Box<Aexp> = {
+    Aexp2 Aexp2Op Aexp3 => Box::new(Aexp::Op(<>)),
+    Aexp3,
+}
+
+Aexp3: Box<Aexp> = {
+    <Aexp3> "!" => Box::new(Aexp::FuncApp("factorial".to_owned(), vec![*<>])),
+    Aexp4,
+}
+
+Aexp4: Box<Aexp> = {
     Numeral => Box::new(Aexp::Numeral(<>)),
     Var => Box::new(Aexp::Var(<>)),
-    "(" <Aexp> ")"
+    <name:Var> "(" <args:Args> ")" => Box::new(Aexp::FuncApp(name, args)),
+    "(" <Aexp> ")",
+}
+
+Args: Vec<Aexp> = {
+    => vec![],
+    <arg:Aexp> <mut args:ArgsHelper> => {
+        args.insert(0, *arg);
+        args
+    }
+}
+
+ArgsHelper: Vec<Aexp> = {
+    <("," <Aexp>)*> => <>.into_iter().map(|arg| *arg).collect(),
 }
 
 Var: String = r"[A-Za-z][A-Za-z0-9]*" => (<>).to_owned();
@@ -140,5 +187,10 @@ Aexp0Op: Opcode = {
 
 Aexp1Op: Opcode = {
     "*" => Opcode::Mul,
+    "%" => Opcode::Mod,
+}
+
+Aexp2Op: Opcode = {
+    "^" => Opcode::Pow,
 }
 

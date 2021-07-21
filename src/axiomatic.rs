@@ -1,6 +1,17 @@
 use super::ast::*;
 use super::state::*;
-use z3::SatResult;
+use z3::{SatResult, FuncDecl, RecFuncDecl};
+use std::collections::HashMap;
+use z3::ast::{forall_const, Ast};
+use std::convert::TryInto;
+
+pub fn build_funcmap<'ctx>(ctx: &'ctx z3::Context, funcdefs: &HashMap<String, ImpFuncDef>) -> HashMap<String, RecFuncDecl<'ctx>> {
+    let funcmap: HashMap<_, _> = funcdefs.iter().map(|(k, v)| (k.clone(), v.to_z3_func_decl(&ctx))).collect();
+    for (name, f) in &funcmap {
+        funcdefs.get(name).unwrap().define(&ctx, &funcmap);
+    }
+    funcmap
+}
 
 pub fn verify_block_except_cons_partial(AxBlock(AssertionChain(first), rem): &AxBlock) {
     let mut pre = first.last().unwrap();
@@ -45,19 +56,19 @@ pub fn verify_block_except_cons_partial(AxBlock(AssertionChain(first), rem): &Ax
     }
 }
 
-pub fn verify_cons_partial(cfg: &z3::Config, AxBlock(first, rem): &AxBlock) {
+pub fn verify_cons_partial(cfg: &z3::Config, AxBlock(first, rem): &AxBlock, funcdefs: &HashMap<String, ImpFuncDef>) {
 
-    verify_assertion_chain(&cfg, first);
+    verify_assertion_chain(&cfg, first, funcdefs);
     for (stm, post_chain) in rem {
         match stm {
-            AxStm::While(_, inner_block) => verify_cons_partial(cfg, inner_block),
+            AxStm::While(_, inner_block) => verify_cons_partial(cfg, inner_block, funcdefs),
             AxStm::If(_, then_block, else_block) => {
-                verify_cons_partial(cfg, then_block);
-                verify_cons_partial(cfg, else_block);
+                verify_cons_partial(cfg, then_block, funcdefs);
+                verify_cons_partial(cfg, else_block, funcdefs);
             },
             _ => (),
         }
-        verify_assertion_chain(cfg, post_chain);
+        verify_assertion_chain(cfg, post_chain, funcdefs);
     }
 }
 
@@ -90,7 +101,7 @@ pub fn verify_block_except_cons_total(AxBlock(AssertionChain(first), rem): &AxBl
                 assert_eq!(post, else_post);
             },
             AxStm::While(cond, AxBlock(AssertionChain(inner_pre_chain), inner_rem)) => {
-                let inner_pre = inner_pre_chain.first().unwrap();
+                // let inner_pre = inner_pre_chain.first().unwrap();
                 let inner_post = inner_rem.last().unwrap().1.0.last().unwrap();
 
                 // if let Bexp::Bop(partial, Bopcode::And, variant) = inner_pre {
@@ -112,63 +123,49 @@ pub fn verify_block_except_cons_total(AxBlock(AssertionChain(first), rem): &AxBl
     }
 }
 
-pub fn verify_cons_total(cfg: &z3::Config, AxBlock(first, rem): &AxBlock) {
+pub fn verify_cons_total(cfg: &z3::Config, AxBlock(first, rem): &AxBlock, funcdefs: &HashMap<String, ImpFuncDef>) {
 
-    verify_assertion_chain(&cfg, first);
+    verify_assertion_chain(&cfg, first, funcdefs);
     for (stm, post_chain) in rem {
         match &stm {
             AxStm::While(_, inner_block) => {
-                verify_cons_total(cfg, inner_block);
+                verify_cons_total(cfg, inner_block, funcdefs);
 
                 let (partial_pre, variant, _) = stm.get_while_things();
 
                 let must_entail = Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Le, variant.clone());
 
-                let ctx = z3::Context::new(&cfg);
-
                 println!("Verifying WhTotAx side-condition (b ∧ P ⊨ 0 ≤ e):\n{:?} ⊨ {:?}", partial_pre, must_entail);
 
-                let entails = entails(&ctx, partial_pre.to_z3_bool(&ctx), must_entail.to_z3_bool(&ctx));
-                let mut solver = z3::Solver::new(&ctx);
-                solver.assert(&entails);
-                let res = solver.check();
-                if res == SatResult::Unsat {
-                    println!("Verified.");
-                } else {
-                    println!("ERROR {:?}! Model where entailment does not hold:", res);
-                    println!("{:?}", solver.get_model().unwrap());
-                    panic!("verification failed.");
-                }
+                check_entailment(cfg, funcdefs, &partial_pre, &must_entail);
+                // let mut solver = z3::Solver::new(&ctx);
+                // solver.assert(&entails);
+                // let res = solver.check();
+                // if res == SatResult::Unsat {
+                //     println!("Verified.");
+                // } else {
+                //     // println!("ERROR {:?}! Model where entailment does not hold:", res);
+                //     // println!("{:?}", solver.get_model().unwrap());
+                //     panic!("ERROR Result is {:?}", res);
+                // }
             },
             AxStm::If(_, then_block, else_block) => {
-                verify_cons_total(cfg, then_block);
-                verify_cons_total(cfg, else_block);
+                verify_cons_total(cfg, then_block, funcdefs);
+                verify_cons_total(cfg, else_block, funcdefs);
             },
             _ => (),
         }
-        verify_assertion_chain(cfg, post_chain);
+        verify_assertion_chain(cfg, post_chain, funcdefs);
     }
 }
 
-fn verify_assertion_chain(cfg: &z3::Config, AssertionChain(chain): &AssertionChain) {
+fn verify_assertion_chain(cfg: &z3::Config, AssertionChain(chain): &AssertionChain, funcdefs: &HashMap<String, ImpFuncDef>) {
     let mut p = chain.first().unwrap();
 
     for q in chain.iter().skip(1) {
-        let ctx = z3::Context::new(&cfg);
-
         println!("Verifying ConsAx rule:\n{{ {:?} }} ⊨ {{ {:?} }}", p, q);
 
-        let p_entails_q = entails(&ctx, p.to_z3_bool(&ctx), q.to_z3_bool(&ctx));
-        let mut solver = z3::Solver::new(&ctx);
-        solver.assert(&p_entails_q);
-        let res = solver.check();
-        if res == SatResult::Unsat {
-            println!("Verified.");
-        } else {
-            println!("ERROR {:?}! Model where entailment does not hold:", res);
-            println!("{:?}", solver.get_model().unwrap());
-            panic!("verification failed.");
-        }
+        check_entailment(cfg, funcdefs, p, q);
 
         p = q;
     }
@@ -274,6 +271,39 @@ fn verify_assertion_chain(cfg: &z3::Config, AssertionChain(chain): &AssertionCha
 //         _ => (),
 //     }
 // }
+
+fn check_entailment<'a>(cfg: &z3::Config, funcdefs: &HashMap<String, ImpFuncDef>, p: &Bexp, q: &Bexp) {
+    let ctx = z3::Context::new(&cfg);
+
+    let funcmap = build_funcmap(&ctx, funcdefs);
+
+    let p_entails_q = entails(&ctx, p.to_z3_bool(&ctx, &funcmap), q.to_z3_bool(&ctx, &funcmap));
+    let mut solver = z3::Solver::new(&ctx);
+    solver.assert(&p_entails_q);
+    // let x = z3::ast::Int::new_const(&ctx, "x");
+    // let x_minus_1 = z3::ast::Int::sub(&ctx, &[&x, &z3::ast::Int::from_i64(&ctx, 1)]);
+    // let fac = funcmap.get("factorial").unwrap();
+    // let fac_of_x_minus_1 = fac.apply(&[&x_minus_1.into()]);
+    // let fac_of_x = fac.apply(&[&x.clone().into()]);
+    // let x_times_fac_of_x_minus_1 = z3::ast::Int::mul(&ctx, &[&x, &fac_of_x_minus_1.as_int().unwrap()]);
+    //
+    // solver.assert(&forall_const(
+    //     &ctx, &[&x.into()], &[], &fac_of_x._eq(&x_times_fac_of_x_minus_1.into())
+    // ).as_bool().unwrap());
+    let res = solver.check();
+    if res == SatResult::Unsat {
+        println!("Verified.");
+    } else if res == SatResult::Unknown {
+        println!("ERROR! Couldn't prove or disprove. Unknown.")
+    } else {
+        println!("ERROR {:?}!", res);
+        println!("Model where entailment does not hold:\n{:?}", solver.get_model().unwrap());
+
+        panic!("verification failed.");
+        // panic!(format!("ERROR Result is {:?}", res));
+
+    }
+}
 
 fn entails<'a>(ctx: &'a z3::Context, a: z3::ast::Bool<'a>, b: z3::ast::Bool<'a>) -> z3::ast::Bool<'a> {
     z3::ast::Bool::and(ctx, &[&a, &b.not()])
