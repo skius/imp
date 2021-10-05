@@ -450,7 +450,7 @@ impl Aexp {
                     Opcode::Sub => z3::ast::Int::sub(ctx, &[&left, &right]),
                     Opcode::Mul => z3::ast::Int::mul(ctx, &[&left, &right]),
                     Opcode::Mod => left.modulo(&right),
-                    Opcode::Pow => left.power(&right),
+                    Opcode::Pow => left.power(&right).to_real().to_int(),
                 }
             },
             Aexp::FuncApp(fname, args) => {

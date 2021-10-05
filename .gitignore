@@ -2,3 +2,4 @@
 .idea
 libz3.*
 release
+.z3-trace
