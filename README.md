@@ -69,3 +69,14 @@ while (i # a) do
 
 To make sure no errors happen because of to this, always write these assertions with explicit parentheses like `b and (P)`  resp. `b and (P) and e = Z` for
 while loops in total correctness proofs (see [`examples/divide.imp`](./examples/divide.imp) for an example of a total correctness proof).
+
+### Functions
+You might not be happy with just IMP operators in your pre-/post-conditions, so just like in the course, this tool
+allows you to define your own functions (and offers the built-in `!` factorial function). The syntax for function calls
+should be familiar, but function definitions are a bit odd; at the moment their body must consist of a single expression,
+which may contain a recursive call. Also, the body's expression supports the ternary `? :` operator to provide
+if-then-else control flow.
+
+See [`examples/gcd_partial.imp`](./examples/gcd_partial.imp) for a proof making use of a user-provided function definition,
+and [`examples/factorial_partial`](./examples/factorial_partial.imp) for a proof making use of the built-in factorial `!`.
+Note that the tool is currently unable to verify either of those proofs, it reports `UNKNOWN`.
