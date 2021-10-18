@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Formatter};
 use std::hint::unreachable_unchecked;
-use z3::ast::{Ast, Dynamic};
+use z3::ast::{Ast, Dynamic, Int};
 use std::collections::HashMap;
 use z3::{RecFuncDecl, Sort};
 use std::convert::TryInto;
@@ -133,62 +133,62 @@ impl AxStm {
 
 
 
-#[derive(Clone)]
-pub enum StmAx {
-    Assign(Box<Bexp>, Var, Box<Aexp>, Box<Bexp>),
-    Seq(Box<StmAx>, Box<StmAx>), // Only one without pre/post condition
-    Skip(Box<Bexp>, Box<Bexp>),
-    If(Box<Bexp>, Box<Bexp>, Box<StmAx>, Box<StmAx>, Box<Bexp>),
-    While(Box<Bexp>, Box<Bexp>, Box<StmAx>, Box<Bexp>),
-}
+// #[derive(Clone)]
+// pub enum StmAx {
+//     Assign(Box<Bexp>, Var, Box<Aexp>, Box<Bexp>),
+//     Seq(Box<StmAx>, Box<StmAx>), // Only one without pre/post condition
+//     Skip(Box<Bexp>, Box<Bexp>),
+//     If(Box<Bexp>, Box<Bexp>, Box<StmAx>, Box<StmAx>, Box<Bexp>),
+//     While(Box<Bexp>, Box<Bexp>, Box<StmAx>, Box<Bexp>),
+// }
+//
+// impl StmAx {
+//     pub fn get_post(&self) -> Box<Bexp> {
+//         match self {
+//             StmAx::Assign(_, _, _, post) => post.clone(),
+//             StmAx::Skip(_, post) => post.clone(),
+//             StmAx::If(_, _, _, _, post) => post.clone(),
+//             StmAx::While(_, _, _, post) => post.clone(),
+//             StmAx::Seq(_, stm2) => stm2.get_post(),
+//         }
+//     }
+//
+//     pub fn get_pre(&self) -> Box<Bexp> {
+//         match self {
+//             StmAx::Assign(pre, _, _, _) => pre.clone(),
+//             StmAx::Skip(pre, _) => pre.clone(),
+//             StmAx::If(pre, _, _, _, _) => pre.clone(),
+//             StmAx::While(pre, _, _, _) => pre.clone(),
+//             StmAx::Seq(stm1, _) => stm1.get_pre(),
+//         }
+//     }
+//
+//     pub fn into_stm(self) -> Box<Stm> {
+//         Box::new(match self {
+//             StmAx::Skip(_, _) => Stm::Skip,
+//             StmAx::Assign(_, var, aexp, _) => Stm::Assign(var, aexp),
+//             StmAx::Seq(stm1, stm2) => Stm::Seq(stm1.into_stm(), stm2.into_stm()),
+//             StmAx::If(_, cond, then_stm, else_stm, _) => {
+//                 Stm::If(cond, then_stm.into_stm(), else_stm.into_stm())
+//             },
+//             StmAx::While(_, cond, stm_inner, _) => {
+//                 Stm::While(cond, stm_inner.into_stm())
+//             },
+//         })
+//     }
+// }
 
-impl StmAx {
-    pub fn get_post(&self) -> Box<Bexp> {
-        match self {
-            StmAx::Assign(_, _, _, post) => post.clone(),
-            StmAx::Skip(_, post) => post.clone(),
-            StmAx::If(_, _, _, _, post) => post.clone(),
-            StmAx::While(_, _, _, post) => post.clone(),
-            StmAx::Seq(_, stm2) => stm2.get_post(),
-        }
-    }
-
-    pub fn get_pre(&self) -> Box<Bexp> {
-        match self {
-            StmAx::Assign(pre, _, _, _) => pre.clone(),
-            StmAx::Skip(pre, _) => pre.clone(),
-            StmAx::If(pre, _, _, _, _) => pre.clone(),
-            StmAx::While(pre, _, _, _) => pre.clone(),
-            StmAx::Seq(stm1, _) => stm1.get_pre(),
-        }
-    }
-
-    pub fn into_stm(self) -> Box<Stm> {
-        Box::new(match self {
-            StmAx::Skip(_, _) => Stm::Skip,
-            StmAx::Assign(_, var, aexp, _) => Stm::Assign(var, aexp),
-            StmAx::Seq(stm1, stm2) => Stm::Seq(stm1.into_stm(), stm2.into_stm()),
-            StmAx::If(_, cond, then_stm, else_stm, _) => {
-                Stm::If(cond, then_stm.into_stm(), else_stm.into_stm())
-            },
-            StmAx::While(_, cond, stm_inner, _) => {
-                Stm::While(cond, stm_inner.into_stm())
-            },
-        })
-    }
-}
-
-impl Debug for StmAx {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            StmAx::Assign(pre, var, aexp, post) => f.write_str(format!("{{ {:?} }} {} := {:?} {{ {:?} }}", pre, var, aexp, post).as_str()),
-            StmAx::Seq(stm1, stm2) => f.write_str(format!("({:?}; {:?})", stm1, stm2).as_str()),
-            StmAx::Skip(pre, post) => f.write_str(format!("{{ {:?} }} skip {{ {:?} }}", pre, post).as_str()),
-            StmAx::If(pre, cond, stm_then, stm_else, post) => f.write_str(format!("{{ {:?} }} if {:?} then {:?} else {:?} end {{ {:?} }}", pre, cond, stm_then, stm_else, post).as_str()),
-            StmAx::While(pre, cond, stm, post) => f.write_str(format!("{{ {:?} }} while {:?} do {:?} end {{ {:?} }}", pre, cond, stm, post).as_str()),
-        }
-    }
-}
+// impl Debug for StmAx {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+//         match self {
+//             StmAx::Assign(pre, var, aexp, post) => f.write_str(format!("{{ {:?} }} {} := {:?} {{ {:?} }}", pre, var, aexp, post).as_str()),
+//             StmAx::Seq(stm1, stm2) => f.write_str(format!("({:?}; {:?})", stm1, stm2).as_str()),
+//             StmAx::Skip(pre, post) => f.write_str(format!("{{ {:?} }} skip {{ {:?} }}", pre, post).as_str()),
+//             StmAx::If(pre, cond, stm_then, stm_else, post) => f.write_str(format!("{{ {:?} }} if {:?} then {:?} else {:?} end {{ {:?} }}", pre, cond, stm_then, stm_else, post).as_str()),
+//             StmAx::While(pre, cond, stm, post) => f.write_str(format!("{{ {:?} }} while {:?} do {:?} end {{ {:?} }}", pre, cond, stm, post).as_str()),
+//         }
+//     }
+// }
 
 #[derive(Clone)]
 pub enum Stm {
@@ -215,6 +215,15 @@ impl Debug for Stm {
 pub enum Bopcode {
     Or,
     And,
+}
+
+impl Bopcode {
+    pub fn sexp_string(&self) -> String {
+        match self {
+            Bopcode::Or => "||".to_owned(),
+            Bopcode::And => "&&".to_owned(),
+        }
+    }
 }
 
 impl Debug for Bopcode {
@@ -263,6 +272,7 @@ impl Bexp {
             Bexp::Rop(left, rop, right) => {
                 let left = left.to_z3_int(ctx, funcmap);
                 let right = right.to_z3_int(ctx, funcmap);
+                // println!("left right {:?} {:?}", left, right);
                 match rop {
                     Ropcode::Eq => left._eq(&right),
                     Ropcode::Ne => (left._eq(&right)).not(),
@@ -296,6 +306,18 @@ impl Bexp {
                 let right = Box::new(right.substitute(var, new_aexp));
                 Bexp::Bop(left, bop, right)
             },
+        }
+    }
+
+    pub fn sexp_string(&self) -> String {
+        match &self {
+            Bexp::Rop(left, rop, right) => format!("({:?} {} {})", rop, left.sexp_string(), right.sexp_string()),
+            Bexp::Not(not) => {
+                format!("(! {})", not.sexp_string())
+            },
+            Bexp::Bop(left, bop, right) => {
+                format!("({} {} {})", bop.sexp_string(), left.sexp_string(), right.sexp_string())
+            }
         }
     }
 
@@ -452,6 +474,8 @@ impl Aexp {
                     Opcode::Mod => left.modulo(&right),
                     Opcode::Pow => left.power(&right).to_real().to_int(),
                 }
+                // println!("what: {:?} sort: {:?}", res, res.get_sort());
+                // res
             },
             Aexp::FuncApp(fname, args) => {
                 let args: Vec<z3::ast::Dynamic<'a>> = args.into_iter().map(|arg| {
@@ -473,6 +497,18 @@ impl Aexp {
 
                 cond.ite(&t, &e)
             }
+        }
+    }
+
+    pub fn sexp_string(&self) -> String {
+        match &self {
+            Aexp::Numeral(num) => format!("{}", num),
+            Aexp::Var(v) => format!("{}", v),
+            Aexp::Op(left, op, right) => {
+
+                format!("({:?} {} {})", op, left.sexp_string(), right.sexp_string())
+            },
+            _ => panic!("Unsupported sexp_string: {:?}", self),
         }
     }
 

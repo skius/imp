@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::ast::{Aexp, Opcode, Bexp, Ropcode, Bopcode, Stm, StmAx};
+use crate::ast::{Aexp, Opcode, Bexp, Ropcode, Bopcode, Stm};
 use crate::ast::*;
 
 grammar;
@@ -61,25 +61,25 @@ Stm1: Box<Stm> = {
     "(" <Stm> ")",
 }
 
-pub StmAx: Box<StmAx> = {
-    <StmAx> ";" <StmAx1> => Box::new(StmAx::Seq(<>)),
-    StmAx1,
-}
-
-// StmAx0 = {
-//     "{" <pre:Bexp> "}" <stm:StmAx1> "{" <post:Bexp> "}"
+// pub StmAx: Box<StmAx> = {
+//     <StmAx> ";" <StmAx1> => Box::new(StmAx::Seq(<>)),
+//     StmAx1,
 // }
-
-StmAx1: Box<StmAx> = {
-    "{" <Bexp> "}" <Var> ":=" <Aexp> "{" <Bexp> "}" => Box::new(StmAx::Assign(<>)),
-    "{" <Bexp> "}" "skip" "{" <Bexp> "}" => Box::new(StmAx::Skip(<>)),
-    "{" <Bexp> "}" "if" <Bexp> "then" <StmAx> "else" <StmAx> "end" "{" <Bexp> "}" => Box::new(StmAx::If(<>)),
-    "{" <pre:Bexp> "}" "if" <cond:Bexp> "then" <then:StmAx> "end" "{" <post:Bexp> "}" => Box::new(StmAx::If(pre, cond, then, Box::new(
-        StmAx::Skip(Box::new(Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Eq, Box::new(Aexp::Numeral(0)))), Box::new(Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Eq, Box::new(Aexp::Numeral(0)))))
-    ), post)),
-    "{" <Bexp> "}" "while" <Bexp> "do" <StmAx> "end" "{" <Bexp> "}" => Box::new(StmAx::While(<>)),
-    "(" <StmAx> ")"
-}
+//
+// // StmAx0 = {
+// //     "{" <pre:Bexp> "}" <stm:StmAx1> "{" <post:Bexp> "}"
+// // }
+//
+// StmAx1: Box<StmAx> = {
+//     "{" <Bexp> "}" <Var> ":=" <Aexp> "{" <Bexp> "}" => Box::new(StmAx::Assign(<>)),
+//     "{" <Bexp> "}" "skip" "{" <Bexp> "}" => Box::new(StmAx::Skip(<>)),
+//     "{" <Bexp> "}" "if" <Bexp> "then" <StmAx> "else" <StmAx> "end" "{" <Bexp> "}" => Box::new(StmAx::If(<>)),
+//     "{" <pre:Bexp> "}" "if" <cond:Bexp> "then" <then:StmAx> "end" "{" <post:Bexp> "}" => Box::new(StmAx::If(pre, cond, then, Box::new(
+//         StmAx::Skip(Box::new(Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Eq, Box::new(Aexp::Numeral(0)))), Box::new(Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Eq, Box::new(Aexp::Numeral(0)))))
+//     ), post)),
+//     "{" <Bexp> "}" "while" <Bexp> "do" <StmAx> "end" "{" <Bexp> "}" => Box::new(StmAx::While(<>)),
+//     "(" <StmAx> ")"
+// }
 
 
 
@@ -194,3 +194,39 @@ Aexp2Op: Opcode = {
     "^" => Opcode::Pow,
 }
 
+pub SBexp = {
+    SBexpAtom,
+    "(" <op:SBexpRop> <left:SAexp> <right:SAexp> ")" => Box::new(Bexp::Rop(left, op, right)),
+    "(" <op:SBexpBop> <left:SBexp> <right:SBexp> ")" => Box::new(Bexp::Bop(left, op, right)),
+    "(" "!" <inner:SBexp> ")" => Box::new(Bexp::Not(inner)),
+}
+
+SBexpAtom: Box<Bexp> = {
+    "true" => Box::new(Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Eq, Box::new(Aexp::Numeral(0)))),
+    "false" => Box::new(Bexp::Rop(Box::new(Aexp::Numeral(0)), Ropcode::Eq, Box::new(Aexp::Numeral(1)))),
+}
+
+SBexpRop: Ropcode = {
+    Bexp3Op,
+}
+
+SBexpBop: Bopcode = {
+    "&&" => Bopcode::And,
+    "||" => Bopcode::Or,
+}
+
+pub SAexp = {
+    SAexpAtom,
+    "(" <op:SAexpOp> <left:SAexp> <right:SAexp> ")" => Box::new(Aexp::Op(left, op, right)),
+}
+
+SAexpAtom: Box<Aexp> = {
+    Numeral => Box::new(Aexp::Numeral(<>)),
+    Var => Box::new(Aexp::Var(<>)),
+}
+
+SAexpOp: Opcode = {
+    Aexp0Op,
+    Aexp1Op,
+    Aexp2Op,
+}
