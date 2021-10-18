@@ -7,6 +7,7 @@ pub mod big_step;
 pub mod small_step;
 pub mod expression;
 pub mod axiomatic;
+pub mod entailment;
 
 use state::{Configuration, State};
 use ast::*;
@@ -91,7 +92,7 @@ fn main() {
         }
 
         let mut cfg = z3::Config::new();
-        cfg.set_timeout_msec(10000);
+        cfg.set_timeout_msec(5000);
         axiomatic::verify_block_except_cons_partial(&prog);
         axiomatic::verify_cons_partial(&cfg, &prog, &funcdefs);
         println!("Successfully verified partial correctness of program. (if there are no ERRORs)");
@@ -108,9 +109,11 @@ fn main() {
         }
 
         let mut cfg = z3::Config::new();
-        cfg.set_timeout_msec(10000);
+        cfg.set_timeout_msec(5000);
         axiomatic::verify_block_except_cons_total(&prog);
         axiomatic::verify_cons_total(&cfg, &prog, &funcdefs);
         println!("Successfully verified total correctness of program. (if there are no ERRORs)");
     }
+
+    entailment::example()
 }

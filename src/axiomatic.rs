@@ -1,9 +1,12 @@
 use super::ast::*;
 use super::state::*;
+use super::entailment::*;
+use super::imp::*;
 use z3::{SatResult, FuncDecl, RecFuncDecl};
 use std::collections::HashMap;
 use z3::ast::{forall_const, Ast};
 use std::convert::TryInto;
+use egg::RecExpr;
 
 pub fn build_funcmap<'ctx>(ctx: &'ctx z3::Context, funcdefs: &HashMap<String, ImpFuncDef>) -> HashMap<String, RecFuncDecl<'ctx>> {
     let funcmap: HashMap<_, _> = funcdefs.iter().map(|(k, v)| (k.clone(), v.to_z3_func_decl(&ctx))).collect();
@@ -274,6 +277,24 @@ fn verify_assertion_chain(cfg: &z3::Config, AssertionChain(chain): &AssertionCha
 
 fn check_entailment<'a>(cfg: &z3::Config, funcdefs: &HashMap<String, ImpFuncDef>, p: &Bexp, q: &Bexp) {
     let ctx = z3::Context::new(&cfg);
+
+    let p_sexp = p.sexp_string();
+    let q_sexp = q.sexp_string();
+    let p_egg: RecExpr<ImpExpr> = p_sexp.parse().unwrap();
+    let q_egg: RecExpr<ImpExpr> = q_sexp.parse().unwrap();
+
+    let bests = get_bests(vec![&p_egg, &q_egg]);
+    println!("Found bests: {}", bests.iter().map(|recexpr| recexpr.to_string()).collect::<Vec<_>>().join(", "));
+
+    let p_canon_sexp = bests[0].to_string();
+    let q_canon_sexp = bests[1].to_string();
+
+    let p_canon = SBexpParser::new().parse(p_canon_sexp.as_str()).unwrap();
+    let q_canon = SBexpParser::new().parse(q_canon_sexp.as_str()).unwrap();
+
+    let p = &p_canon;
+    let q = &q_canon;
+
 
     let funcmap = build_funcmap(&ctx, funcdefs);
 
