@@ -217,11 +217,20 @@ pub enum Bopcode {
     And,
 }
 
+impl Bopcode {
+    pub fn sexp_string(&self) -> String {
+        match self {
+            Bopcode::Or => "||".to_owned(),
+            Bopcode::And => "&&".to_owned(),
+        }
+    }
+}
+
 impl Debug for Bopcode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Bopcode::Or => f.write_str("||"), // TODO: this was changed for egg
-            Bopcode::And => f.write_str("&&"),
+            Bopcode::Or => f.write_str("or"),
+            Bopcode::And => f.write_str("and"),
         }
     }
 }
@@ -307,7 +316,7 @@ impl Bexp {
                 format!("(! {})", not.sexp_string())
             },
             Bexp::Bop(left, bop, right) => {
-                format!("({:?} {} {})", bop, left.sexp_string(), right.sexp_string())
+                format!("({} {} {})", bop.sexp_string(), left.sexp_string(), right.sexp_string())
             }
         }
     }
