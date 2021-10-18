@@ -1,0 +1,25 @@
+{x = X and X >= 0}
+|=
+{ x = X and X >= 0 and 1 = 1}
+y := 1
+{ x = X and X >= 0 and y = 1}
+|=
+{ x = X and X >= 0 and y = 1 and 0 = 0}
+z := 0
+{ x = X and X >= 0 and y = 1 and z = 0}
+|=
+{ x = X and X >= 0 and y = 1 and z = 0}
+|=
+{x = X and y = 2 ^ z and z <= x}
+while z < x do
+    {z < x and (x = X and y = 2 ^ z and z <= x) and x - z = V}
+    |=
+    {x = X and y * 2 = 2 ^(z + 1) and z + 1 <= x and (x - (z+1)) < V}
+    y := y * 2
+    {x = X and y = 2 ^(z + 1) and z + 1 <= x and (x - (z+1)) < V}
+    z := z + 1
+    {x = X and y = 2^z and z <= x and (x - z) < V}
+end
+{not z < x and (x = X and y = 2 ^ z and z <= x)}
+|=
+{y = 2^X}

@@ -1,0 +1,37 @@
+gcd(m, n) {
+    (m % n = 0) ? n : gcd(n, m % n)
+}
+
+{x = X and y = Y and X > 0 and Y > 0}
+|=
+{x = X and y = Y and X > 0 and Y > 0 and x = X}
+b := x
+{x = X and y = Y and X > 0 and Y > 0 and b = X}
+|=
+{x = X and y = Y and X > 0 and Y > 0 and b = X and y = Y}
+c := y
+{x = X and y = Y and X > 0 and Y > 0 and b = X and c = Y}
+|=
+{gcd(x,y) = gcd(b,c) and b > 0 and c > 0 and x = X and y = Y}
+while b # c do
+    { b # c and (gcd(x,y) = gcd(b,c) and b > 0 and c > 0 and x = X and y = Y) }
+    if b < c then
+        { b < c and (b # c and (gcd(x,y) = gcd(b,c) and b > 0 and c > 0 and x = X and y = Y)) }
+        |=
+        {gcd(x,y) = gcd(b,c - b) and b > 0 and c - b > 0 and x = X and y = Y}
+        c := c - b
+        { gcd(x, y) = gcd(b, c) and b > 0 and c > 0 and x = X and y = Y}
+    else
+        { not b < c and (b # c and (gcd(x,y) = gcd(b,c) and b > 0 and c > 0 and x = X and y = Y)) }
+        |=
+        {gcd(x,y) = gcd(b - c,c) and b - c > 0 and c > 0 and x = X and y = Y}
+        b := b - c
+        {gcd(x,y) = gcd(b,c) and b > 0 and c > 0 and x = X and y = Y}
+    end
+    {gcd(x,y) = gcd(b,c) and b > 0 and c > 0 and x = X and y = Y}
+end
+{not b # c and (gcd(x,y) = gcd(b,c) and b > 0 and c > 0 and x = X and y = Y)}
+|=
+{b = gcd(X, Y)}
+z := b
+{z = gcd(X, Y)}
