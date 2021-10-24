@@ -1,13 +1,4 @@
-#[macro_use] extern crate lalrpop_util;
-
-lalrpop_mod!(pub imp); // synthesized by LALRPOP
-pub mod ast;
-pub mod state;
-pub mod big_step;
-pub mod small_step;
-pub mod expression;
-pub mod axiomatic;
-pub mod entailment;
+use imp::*;
 
 use state::{Configuration, State};
 use ast::*;
@@ -15,7 +6,7 @@ use std::env;
 use std::fs;
 use z3;
 use std::collections::HashMap;
-use crate::ast::Bexp::Rop;
+use ast::Bexp::Rop;
 
 
 fn main() {
@@ -40,25 +31,25 @@ fn main() {
 
     if run_big == "true" {
         // Allow both pure IMP syntax and pre/post-condition syntax
-        let prog_res = imp::StmParser::new().parse(contents.as_str());
+        let prog_res = imp_lang::StmParser::new().parse(contents.as_str());
         let prog = if prog_res.is_err() {
-            imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm()
+            imp_lang::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm()
         } else {
             prog_res.unwrap()
         };
-        // let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
+        // let prog = imp_lang::StmParser::new().parse(contents.as_str()).unwrap_or(imp_lang::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
         println!("\nRunning big-step evaluator...");
         println!("Big-step result: {:?}", big_step::run(Configuration::Nonterminal(prog, State::new())));
     }
     if run_small == "true" {
         // Allow both pure IMP syntax and pre/post-condition syntax
-        let prog_res = imp::StmParser::new().parse(contents.as_str());
+        let prog_res = imp_lang::StmParser::new().parse(contents.as_str());
         let prog = if prog_res.is_err() {
-            imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm()
+            imp_lang::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm()
         } else {
             prog_res.unwrap()
         };
-        // let prog = imp::StmParser::new().parse(contents.as_str()).unwrap_or(imp::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
+        // let prog = imp_lang::StmParser::new().parse(contents.as_str()).unwrap_or(imp_lang::AxBlockParser::new().parse(contents.as_str()).unwrap().into_stm());
         println!("\nRunning small-step evaluator...");
         let mut sos = small_step::SOS::new(Configuration::Nonterminal(prog.clone(), State::new()));
         sos.run_execution();
@@ -83,7 +74,7 @@ fn main() {
 
     if run_axiomatic == "partial" || run_axiomatic == "true" {
         // Force syntax with pre/post-conditions
-        let (funcdefs_vec, prog) = imp::AxProgramParser::new().parse(contents.as_str()).unwrap();
+        let (funcdefs_vec, prog) = imp_lang::AxProgramParser::new().parse(contents.as_str()).unwrap();
         println!("\nVerifying partial correctness for program using axiomatic semantics...");
         println!("{:?}\n", prog);
 
@@ -100,7 +91,7 @@ fn main() {
 
     if run_axiomatic == "total" {
         // Force syntax with pre/post-conditions
-        let (funcdefs_vec, prog) = imp::AxProgramParser::new().parse(contents.as_str()).unwrap();
+        let (funcdefs_vec, prog) = imp_lang::AxProgramParser::new().parse(contents.as_str()).unwrap();
         println!("\nVerifying total correctness for program using axiomatic semantics...");
         println!("{:?}\n", prog);
 

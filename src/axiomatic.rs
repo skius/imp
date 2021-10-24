@@ -1,7 +1,7 @@
 use super::ast::*;
 use super::state::*;
 use super::entailment::*;
-use super::imp::*;
+use super::imp_lang::*;
 use z3::{SatResult, FuncDecl, RecFuncDecl};
 use std::collections::HashMap;
 use z3::ast::{forall_const, Ast};
