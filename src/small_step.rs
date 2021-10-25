@@ -12,7 +12,7 @@ impl SOS {
         SOS {config, done: false}
     }
 
-    pub fn run_execution(&mut self) {
+    pub fn run_execution(&mut self) -> Configuration {
         let mut it = self.peekable();
         print!("   ");
         while it.peek().is_some() && it.peek().unwrap().is_nonterminal()  {
@@ -20,8 +20,9 @@ impl SOS {
         }
         // The iterator never stops unless its a Terminal state, hence the next iterator
         // Option<Configuration> should be Some(Terminal)
-        println!("{:?}", it.next().unwrap())
-
+        let term = it.next().unwrap();
+        println!("{:?}", term);
+        term
     }
 }
 

@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 use std::hint::unreachable_unchecked;
 use z3::ast::{Ast, Dynamic, Int};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use z3::{RecFuncDecl, Sort};
 use std::convert::TryInto;
 
@@ -321,6 +321,14 @@ impl Bexp {
         }
     }
 
+    pub fn can_egg(&self) -> bool {
+        match self {
+            Bexp::Rop(left, _, right) => left.can_egg() && right.can_egg(),
+            Bexp::Bop(left, _, right) => left.can_egg() && right.can_egg(),
+            Bexp::Not(i) => i.can_egg(),
+        }
+    }
+
     pub fn pretty_string(&self) -> String {
         match &self {
             Bexp::Rop(left, rop, right) => format!("{} {:?} {}", left.pretty_string(), rop, right.pretty_string()),
@@ -371,6 +379,23 @@ impl Bexp {
             Bexp::Bop(_, Bopcode::Or, _) => 1,
         }
     }
+
+    pub fn free_vars(&self) -> HashSet<Var> {
+        match self {
+            Bexp::Rop(left, _, right) => {
+                let mut left_fv = left.free_vars();
+                left_fv.extend(right.free_vars());
+                left_fv
+            }
+            Bexp::Bop(left, _, right) => {
+                let mut left_fv = left.free_vars();
+                left_fv.extend(right.free_vars());
+                left_fv
+            }
+            Bexp::Not(inner) => inner.free_vars()
+        }
+    }
+
 }
 
 impl Debug for Bexp {
@@ -512,6 +537,14 @@ impl Aexp {
         }
     }
 
+    pub fn can_egg(&self) -> bool {
+        match self {
+            Aexp::FuncApp(_, _) | Aexp::Ite(_, _, _) => false,
+            Aexp::Op(left, _, right) => left.can_egg() && right.can_egg(),
+            _ => true,
+        }
+    }
+
     pub fn pretty_string(&self) -> String {
         match &self {
             Aexp::Numeral(num) => format!("{}", num),
@@ -588,6 +621,27 @@ impl Aexp {
                 Aexp::FuncApp(fname, args.into_iter().map(|arg| arg.substitute(var, new_aexp)).collect())
             }
             _ => self,
+        }
+    }
+
+    pub fn free_vars(&self) -> HashSet<Var> {
+        match self {
+            Aexp::Numeral(_) => HashSet::new(),
+            Aexp::Var(v) => HashSet::from([v.clone()]),
+            Aexp::Op(left, _, right) => {
+                let mut left_fv = left.free_vars();
+                left_fv.extend(right.free_vars());
+                left_fv
+            }
+            Aexp::FuncApp(_, args) => {
+                args.into_iter().map(|arg| arg.free_vars().into_iter()).flatten().collect::<HashSet<_>>()
+            }
+            Aexp::Ite(cond, t, e) => {
+                let mut cond_fv = cond.free_vars();
+                cond_fv.extend(t.free_vars());
+                cond_fv.extend(e.free_vars());
+                cond_fv
+            }
         }
     }
 }
